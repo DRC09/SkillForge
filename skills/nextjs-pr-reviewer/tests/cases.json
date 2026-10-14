@@ -1,0 +1,37 @@
+[
+  {
+    "id": "nextjs-case-1",
+    "name": "Detección de uso excesivo de use client e impacto en hidratación",
+    "input": "El PR añade 'use client' en app/dashboard/page.tsx e importa una librería de gráficas pesada en el componente raíz.",
+    "expectedBehavior": "Reportar hallazgo de rendimiento por hidratación innecesaria, citar el archivo afectado y proponer parche aislando 'use client' en la hoja interactiva.",
+    "criteria": ["rendimiento", "use client", "hidratación", "parche", "references/checklist.md"]
+  },
+  {
+    "id": "nextjs-case-2",
+    "name": "Eliminación de cascadas de red secuenciales con Promise.all",
+    "input": "Un Server Component ejecuta tres llamadas await independientes en serie antes de renderizar la vista.",
+    "expectedBehavior": "Detectar cascadas de red, explicar el impacto en Core Web Vitals y proponer parche paralelizando con Promise.all.",
+    "criteria": ["cascadas", "Promise.all", "Core Web Vitals", "Server Components"]
+  },
+  {
+    "id": "nextjs-case-3",
+    "name": "Auditoría de accesibilidad WCAG en botones y modales",
+    "input": "Un modal de confirmación usa div con onClick sin atributos ARIA, sin soporte para tecla Escape ni foco visible.",
+    "expectedBehavior": "Marcar problema de accesibilidad WCAG 2.2 AA, exigir HTML semántico (button, dialog), atributos ARIA y navegación por teclado (Tab, Enter, Escape).",
+    "criteria": ["accesibilidad", "WCAG 2.2 AA", "ARIA", "teclado", ":focus-visible"]
+  },
+  {
+    "id": "nextjs-case-4",
+    "name": "Seguridad en Server Actions y validación con Zod",
+    "input": "Una función con 'use server' actualiza un registro en base de datos usando formData directamente sin validar esquema ni comprobar propietario del recurso.",
+    "expectedBehavior": "Clasificar hallazgo como CRÍTICO en seguridad (OWASP), exigir validación con Zod y control de autorización contra IDOR.",
+    "criteria": ["seguridad", "CRÍTICO", "Server Actions", "Zod", "IDOR"]
+  },
+  {
+    "id": "nextjs-case-5",
+    "name": "Prevención de filtración de secretos en NEXT_PUBLIC_ y XSS",
+    "input": "El PR añade NEXT_PUBLIC_STRIPE_SECRET_KEY en configuración y renderiza HTML externo con dangerouslySetInnerHTML.",
+    "expectedBehavior": "Alertar sobre exposición de claves privadas en NEXT_PUBLIC_ y riesgo XSS en dangerouslySetInnerHTML con parche de remediación inmediato.",
+    "criteria": ["NEXT_PUBLIC_", "XSS", "dangerouslySetInnerHTML", "CRÍTICO", "ALTO"]
+  }
+]

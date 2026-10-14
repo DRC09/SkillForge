@@ -1,18 +1,18 @@
 # SkillForge
 
 ```text
-   _____ __   _ ________ ______                    
-  / ___// /__(_) / / ____/___  ________ ____ 
+   _____ __   _ ________ ______
+  / ___// /__(_) / / ____/___  ________ ____
   \__ \/ //_/ / / / /_  / __ \/ ___/ _ `/ _ \
  ___/ / ,< / / / / __/ / /_/ / /  / /_/ /  __/
-/____/_/|_/_/_/_/_/    \____/_/   \__, /\___/ 
-                                 /____/       
+/____/_/|_/_/_/_/_/    \____/_/   \__, /\___/
+                                 /____/
 ```
 
 > **Describe una habilidad en una frase. Obtén un skill versionado, validado e instalable para tu agente de código.**
 
 [![npm version](https://img.shields.io/badge/npm-v0.1.0-cb3837?logo=npm)](https://www.npmjs.com/package/skillforge)
-[![Tests](https://img.shields.io/badge/tests-30%20passed-2ea44f?logo=vitest)](https://github.com/DRC09/SkillForge)
+[![Tests](https://img.shields.io/badge/tests-36%20passed-2ea44f?logo=vitest)](https://github.com/DRC09/SkillForge)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7%20Strict-3178c6?logo=typescript)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
@@ -59,13 +59,13 @@ npm install -g skillforge
 
 ## Comandos
 
-| Comando | Descripción |
-|---|---|
-| `skillforge create "<descripción>"` | Analiza la descripción con heurísticas locales, genera la estructura del skill y lo valida automáticamente. |
-| `skillforge validate <ruta>` | Valida `SKILL.md`, frontmatter YAML, reglas de nombre, referencias a archivos y `skillforge.config.json`. |
-| `skillforge test <ruta>` | Ejecuta evaluación estática de cobertura contra `tests/cases.json` y genera `skillforge-report.json`. |
-| `skillforge pack <ruta>` | Valida y empaqueta el skill en `dist/<skill-name>.skillforge.zip` excluyendo archivos temporales y secretos. |
-| `skillforge init [directorio]` | Crea un repositorio base `skillforge-skills` con un skill de ejemplo y un workflow de GitHub Actions. |
+| Comando                             | Descripción                                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `skillforge create "<descripción>"` | Analiza la descripción con heurísticas locales, genera la estructura del skill y lo valida automáticamente.  |
+| `skillforge validate <ruta>`        | Valida `SKILL.md`, frontmatter YAML, reglas de nombre, referencias a archivos y `skillforge.config.json`.    |
+| `skillforge test <ruta>`            | Ejecuta evaluación estática de cobertura contra `tests/cases.json` y genera `skillforge-report.json`.        |
+| `skillforge pack <ruta>`            | Valida y empaqueta el skill en `dist/<skill-name>.skillforge.zip` excluyendo archivos temporales y secretos. |
+| `skillforge init [directorio]`      | Crea un repositorio base `skillforge-skills` con un skill de ejemplo y un workflow de GitHub Actions.        |
 
 ---
 
@@ -125,7 +125,7 @@ El archivo `SKILL.md` incluye frontmatter YAML validado (`name` en kebab-case ha
    npx skillforge init
    cd skillforge-skills
    git init && git add . && git commit -m "feat: add initial agent skills"
-   git remote add origin [https://github.com/](https://github.com/)<owner>/<repo>.git
+   git remote add origin https://github.com/<owner>/<repo>.git
    git push -u origin main
    ```
 2. Cualquier desarrollador podrá instalar tu skill directamente en su agente (`Claude Code`, `Cursor`, `Codex`, etc.) ejecutando:

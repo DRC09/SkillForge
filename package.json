@@ -1,0 +1,59 @@
+{
+  "name": "skillforge",
+  "version": "0.1.0",
+  "description": "Describe a capability in one sentence. Get a versioned, validated, installable Agent Skill.",
+  "type": "module",
+  "bin": {
+    "skillforge": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "tsx src/cli/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "agent-skills",
+    "ai-agents",
+    "cli",
+    "claude-code",
+    "cursor",
+    "codex",
+    "skills",
+    "skillforge"
+  ],
+  "author": "DRC09",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DRC09/SkillForge.git"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "commander": "^12.1.0",
+    "ora": "^8.1.1",
+    "picocolors": "^1.1.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^2.1.8"
+  }
+}

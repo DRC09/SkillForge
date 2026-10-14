@@ -1,0 +1,11 @@
+src/
+tests/
+skillforge-skills/
+.github/
+coverage/
+*.skillforge.zip
+skillforge-report.json
+tsconfig.json
+tsconfig.build.json
+eslint.config.js
+.prettierrc

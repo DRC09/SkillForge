@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+skillforge-skills/
+*.skillforge.zip
+skillforge-report.json
+.DS_Store
+.env
+.env.*
+*.log
+*.tmp

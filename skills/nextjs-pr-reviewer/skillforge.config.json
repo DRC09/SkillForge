@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "name": "nextjs-pr-reviewer",
+  "category": "code-review",
+  "targetAgent": "generic",
+  "language": "es",
+  "version": "0.1.0",
+  "author": "DRC09",
+  "license": "MIT",
+  "tags": ["code-review", "nextjs", "performance", "accessibility", "security"],
+  "entrypoint": "SKILL.md"
+}
