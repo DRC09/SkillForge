@@ -7,7 +7,7 @@ This file provides context, architectural constraints, and verification workflow
 **SkillForge** is an open-source CLI tool (`skillforge`) that converts a natural-language description into a versioned, validated, and installable **Agent Skill** compatible with `npx skills add <owner>/<repo> --skill <skill-name>`.
 
 - **Core Value Proposition:** _"Describe una habilidad en una frase. Obtén un skill versionado, validado e instalable para tu agente de código."_
-- **Zero-API Requirement:** 100% local heuristic analysis and template generation. Never require paid API keys, LLM SDKs, or external network calls for the MVP.
+- **Zero-API Requirement:** 100% local heuristic analysis and template generation by default. Never require paid API keys or LLM SDKs. The only network access is the opt-in LLM enrichment (`--provider ollama|openai|anthropic`), implemented with native `fetch`; with `--provider none` (the default) SkillForge makes no network calls.
 
 ---
 
@@ -26,6 +26,10 @@ npx tsx src/cli/index.ts validate ./skills/nextjs-pr-reviewer      # Validate bu
 npx tsx src/cli/index.ts test ./skills/nextjs-pr-reviewer          # Run static coverage tests on example skill
 npx tsx src/cli/index.ts pack ./skills/nextjs-pr-reviewer          # Package skill into dist/nextjs-pr-reviewer.skillforge.zip
 npx tsx src/cli/index.ts init                                      # Scaffold skillforge-skills repository
+npx tsx src/cli/index.ts list                                      # List skills in ./skills (--templates, --json)
+npx tsx src/cli/index.ts doctor                                    # Check Node.js, skills/ directory and skill validity
+npx tsx src/cli/index.ts validate ./skills/nextjs-pr-reviewer -w   # Re-validate on every change (also: test --watch)
+npx tsx src/cli/index.ts create "Descripción..." --yes --from-repo . --provider none   # Inject repo context, no LLM
 ```
 
 ---
@@ -61,20 +65,25 @@ src/
 │   ├── validate.ts            # CLI handler for skillforge validate
 │   ├── test.ts                # CLI handler for skillforge test
 │   ├── pack.ts                # CLI handler + file filtering for skillforge pack
-│   └── init.ts                # CLI handler + scaffolding for skillforge init
+│   ├── init.ts                # CLI handler + scaffolding for skillforge init
+│   ├── list.ts                # listSkillsInDirectory, listAvailableTemplates & skillforge list handler
+│   └── doctor.ts              # runDoctorChecks & skillforge doctor handler
 ├── generators/
 │   ├── analyzer.ts            # Heuristic category detection & kebab-case name generation
-│   └── skill-generator.ts     # Writes SKILL.md, README.md, skillforge.config.json, references/, tests/
+│   ├── skill-generator.ts     # Writes SKILL.md, README.md, skillforge.config.json, references/, tests/
+│   ├── repo-inspector.ts      # inspectRepository & formatRepoContextMarkdown (--from-repo)
+│   └── llm-enricher.ts        # Optional LLM enrichment via native fetch with local fallback (--provider)
 ├── templates/
 │   └── index.ts               # Actionable templates (es/en) for all 11 mandatory categories
 ├── validators/
 │   ├── schema.ts              # Zod schemas for frontmatter, skillforge.config.json, and cases.json
 │   ├── skill-validator.ts     # Structural, frontmatter, reference, and config validation
-│   └── skill-tester.ts        # Static test runner & coverage score calculator (0-100)
+│   └── skill-tester.ts        # Static test runner, exact/stem/synonym criterion matching & coverage score (0-100)
 ├── utils/
 │   ├── fs.ts                  # Safe filesystem helpers
 │   ├── logger.ts              # Central terminal logger (picocolors)
 │   ├── string.ts              # Kebab-case, accent stripping, YAML frontmatter parser
+│   ├── watcher.ts             # watchSkillDirectory (debounced fs.watch) & startWatchMode (--watch)
 │   └── zip.ts                 # Zero-dependency PKZIP archive builder & reader
 └── types/
     └── index.ts               # Shared TypeScript interfaces and union types
@@ -127,7 +136,7 @@ Must return exit code `0` if valid, `1` if invalid, checking:
 
 1. Run `validateSkill(skillPath)` first.
 2. Load and validate `tests/cases.json` with Zod (`input`, `expectedBehavior`, and non-empty `criteria: string[]`).
-3. Normalize accents and case in `SKILL.md` + `references/checklist.md`, then check how many `criteria` terms per test case are covered.
+3. Normalize accents and case in `SKILL.md` + `references/checklist.md`, then check how many `criteria` terms per test case are covered. Each criterion is matched by `evaluateCriterionMatch` as `exact`, then `stem` (simple lexical root), then `synonym` (bilingual `SYNONYM_GROUPS`), and the per-criterion result is stored in `matchDetails`.
 4. Calculate per-case score (`0..100`) and overall `coverageScore` (average across cases).
 5. Write `skillforge-report.json` inside the skill directory.
 6. Pass (exit code `0`) only if `validation.valid === true` AND `coverageScore >= 70`; otherwise fail (exit code `1`).
@@ -146,6 +155,26 @@ The repository must include `skills/nextjs-pr-reviewer` out of the box with:
 - Complete `SKILL.md`, `README.md`, `skillforge.config.json`, `references/checklist.md`, and `tests/cases.json` (at least 5 test cases).
 - Must pass `validate` and `test` with a score >= 70.
 
+### 5.6 Repository Context (`skillforge create --from-repo <path>`)
+
+1. `inspectRepository(repoPath)` is pure: it throws `El directorio de repositorio especificado no existe: <ruta>` when the directory is missing.
+2. Package manager priority: `pnpm-lock.yaml` → `yarn.lock` → `bun.lockb`/`bun.lock` → `npm`.
+3. `generateSkill` merges `detectedFrameworks` into `tags` (no duplicates, max 10), stores `repoContext` in `skillforge.config.json` and injects `## Contexto Técnico del Repositorio` (`## Repository Technical Context` with `--lang en`) right after the Purpose section, plus one extra checklist item.
+4. `repoContext` is optional in `SkillForgeConfigSchema`: v0.1.0 configs without it MUST stay valid.
+
+### 5.7 Optional LLM Enrichment (`--provider`, `--model`)
+
+1. `enrichSkillMarkdownIfRequested` only uses native `fetch` with `AbortSignal.timeout(8000)`. Never add an LLM SDK.
+2. `none` (default) never touches the network. `openai` and `anthropic` require `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`; `ollama` uses `OLLAMA_HOST` (default `http://127.0.0.1:11434`).
+3. The enrichment MUST NOT break `create`: on a missing key, network error, or an answer that loses the frontmatter, the `name`, or any `##` section, return the heuristic markdown with a Spanish `warning`. Never print API keys.
+4. The enriched `SKILL.md` is validated with `validateSkill` like any other skill.
+
+### 5.8 Watch Mode, `list` and `doctor`
+
+1. `validate --watch` and `test --watch` behave exactly as before without the flag. With it, they run once, print `Observando cambios en el skill (presiona Ctrl+C para salir)...` and re-run on every change (250 ms debounce, ignoring `skillforge-report.json`, `.git`, `node_modules`).
+2. `skillforge list [dir]` defaults to `./skills`; `--templates` lists the 11 categories and `--json` prints JSON. It always exits `0`.
+3. `skillforge doctor [dir]` checks Node.js >= 20, the `skills/` directory and that every installed skill is valid; it exits `0` only when all checks pass.
+
 ---
 
 ## 6. Execution Protocol for Claude Code
@@ -162,4 +191,4 @@ When asked to build or update the project, execute in this exact order:
    - Run `npm run lint`
    - Run `npm test`
    - Run `npm run build`
-   - Smoke-test all 5 CLI commands (`create`, `validate`, `test`, `pack`, `init`) and clean up any temporary directories created in the root during smoke testing.
+   - Smoke-test all 7 CLI commands (`create`, `validate`, `test`, `pack`, `init`, `list`, `doctor`) and clean up any temporary directories created in the root during smoke testing.

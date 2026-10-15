@@ -7,6 +7,7 @@ import {
   TargetAgent
 } from '../types/index.js';
 import { analyzeDescription } from './analyzer.js';
+import { inspectRepository } from './repo-inspector.js';
 import {
   buildTestCases,
   renderChecklistMarkdown,
@@ -22,6 +23,8 @@ export interface GeneratedSkillArtifact {
   filesCreated: string[];
 }
 
+const MAX_TAGS = 10;
+
 export function generateSkill(options: CreateSkillOptions): GeneratedSkillArtifact {
   const analysis = analyzeDescription(options.description);
   const skillName = options.name ? toKebabCase(options.name) : analysis.suggestedName;
@@ -30,6 +33,12 @@ export function generateSkill(options: CreateSkillOptions): GeneratedSkillArtifa
   const detailLevel: DetailLevel = options.detailLevel ?? 'estandar';
   const baseDir = options.outputDir ? path.resolve(options.outputDir) : process.cwd();
   const skillDir = path.join(baseDir, skillName);
+
+  // Inspect the repository before touching the filesystem so a bad path leaves no partial output.
+  const repoContext = options.fromRepo ? inspectRepository(options.fromRepo) : undefined;
+  const tags = Array.from(
+    new Set([...analysis.tags, ...(repoContext?.detectedFrameworks ?? [])])
+  ).slice(0, MAX_TAGS);
 
   ensureDir(skillDir);
   ensureDir(path.join(skillDir, 'references'));
@@ -44,9 +53,17 @@ export function generateSkill(options: CreateSkillOptions): GeneratedSkillArtifa
     version: '0.1.0',
     author: options.author ?? '',
     license: 'MIT',
-    tags: analysis.tags,
+    tags,
     entrypoint: 'SKILL.md'
   };
+
+  if (repoContext) {
+    config.repoContext = {
+      frameworks: repoContext.detectedFrameworks,
+      packageManager: repoContext.packageManager,
+      hasTypeScript: repoContext.hasTypeScript
+    };
+  }
 
   const skillMdContent = renderSkillMarkdown({
     name: skillName,
@@ -56,14 +73,16 @@ export function generateSkill(options: CreateSkillOptions): GeneratedSkillArtifa
     targetAgent,
     language,
     detailLevel,
-    tags: analysis.tags
+    tags,
+    repoContext
   });
 
   const checklistContent = renderChecklistMarkdown(
     skillName,
     analysis.primaryCategory,
     analysis.secondaryCategories,
-    language
+    language,
+    repoContext
   );
 
   const testCases = buildTestCases(analysis.primaryCategory, language);

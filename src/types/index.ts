@@ -17,6 +17,20 @@ export type SkillLanguage = 'es' | 'en';
 
 export type DetailLevel = 'basico' | 'estandar' | 'avanzado';
 
+export type LlmProvider = 'none' | 'ollama' | 'openai' | 'anthropic';
+
+export type PackageManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun';
+
+export interface RepoContext {
+  projectName: string;
+  packageManager: PackageManagerName;
+  dependencies: Record<string, string>;
+  scripts: Record<string, string>;
+  detectedFrameworks: string[];
+  configFiles: string[];
+  hasTypeScript: boolean;
+}
+
 export interface SkillForgeConfig {
   schemaVersion: 1;
   name: string;
@@ -28,6 +42,11 @@ export interface SkillForgeConfig {
   license: string;
   tags: string[];
   entrypoint: string;
+  repoContext?: {
+    frameworks: string[];
+    packageManager: PackageManagerName;
+    hasTypeScript: boolean;
+  };
 }
 
 export interface CreateSkillOptions {
@@ -38,6 +57,9 @@ export interface CreateSkillOptions {
   detailLevel?: DetailLevel;
   outputDir?: string;
   author?: string;
+  fromRepo?: string;
+  provider?: LlmProvider;
+  model?: string;
 }
 
 export interface AnalyzedPrompt {
@@ -82,6 +104,27 @@ export interface SkillTestCaseResult {
   missingCriteria: string[];
   score: number;
   passed: boolean;
+  matchDetails?: Array<{
+    criterion: string;
+    matched: boolean;
+    matchType: 'exact' | 'stem' | 'synonym' | 'none';
+  }>;
+}
+
+export interface SkillSummaryItem {
+  name: string;
+  path: string;
+  category: string;
+  version: string;
+  language: string;
+  targetAgent: string;
+  valid: boolean;
+}
+
+export interface DoctorCheckResult {
+  check: string;
+  passed: boolean;
+  detail: string;
 }
 
 export interface SkillTestReport {

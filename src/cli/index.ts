@@ -5,8 +5,27 @@ import { executeValidateCommand } from '../commands/validate.js';
 import { executeTestCommand } from '../commands/test.js';
 import { executePackCommand } from '../commands/pack.js';
 import { executeInitCommand } from '../commands/init.js';
-import { DetailLevel, SkillLanguage, TargetAgent } from '../types/index.js';
+import { executeListCommand } from '../commands/list.js';
+import { executeDoctorCommand } from '../commands/doctor.js';
+import { DetailLevel, LlmProvider, SkillLanguage, TargetAgent } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import { startWatchMode } from '../utils/watcher.js';
+
+function runOnceOrWatch(skillPath: string, watch: boolean | undefined, action: () => number): void {
+  if (!watch) {
+    process.exitCode = action();
+    return;
+  }
+
+  const stop = startWatchMode(skillPath, action, (code) => {
+    process.exitCode = code;
+  });
+  if (stop) {
+    // Closing the watcher lets the event loop drain so the process exits with the last code.
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+  }
+}
 
 export function buildCli(): Command {
   const program = new Command();
@@ -16,7 +35,7 @@ export function buildCli(): Command {
     .description(
       'Convierte una descripción en lenguaje natural en un Agent Skill validado, versionado e instalable.'
     )
-    .version('0.1.0');
+    .version('0.2.0');
 
   program
     .command('create')
@@ -32,6 +51,16 @@ export function buildCli(): Command {
     .option('-d, --level <level>', 'Nivel de detalle: basico, estandar o avanzado', 'estandar')
     .option('-o, --out <dir>', 'Directorio de salida donde se creará la carpeta del skill')
     .option('-y, --yes', 'Omitir preguntas interactivas y usar valores detectados')
+    .option(
+      '--from-repo <path>',
+      'Inspeccionar un repositorio local para inyectar su stack, versiones y scripts en el skill'
+    )
+    .option(
+      '--provider <provider>',
+      'Proveedor opcional de enriquecimiento: none, ollama, openai, anthropic',
+      'none'
+    )
+    .option('--model <model>', 'Modelo opcional cuando se utiliza --provider')
     .action(
       async (
         description: string,
@@ -42,6 +71,9 @@ export function buildCli(): Command {
           level?: DetailLevel;
           out?: string;
           yes?: boolean;
+          fromRepo?: string;
+          provider?: LlmProvider;
+          model?: string;
         }
       ) => {
         const code = await executeCreateCommand(description, opts);
@@ -53,18 +85,18 @@ export function buildCli(): Command {
     .command('validate')
     .description('Valida la estructura, frontmatter YAML, referencias y configuración de un skill')
     .argument('<skillPath>', 'Ruta a la carpeta del skill')
-    .action((skillPath: string) => {
-      const code = executeValidateCommand(skillPath);
-      process.exitCode = code;
+    .option('-w, --watch', 'Observar cambios en el skill y volver a validar automáticamente')
+    .action((skillPath: string, opts: { watch?: boolean }) => {
+      runOnceOrWatch(skillPath, opts.watch, () => executeValidateCommand(skillPath));
     });
 
   program
     .command('test')
     .description('Ejecuta la evaluación estática de cobertura sobre tests/cases.json')
     .argument('<skillPath>', 'Ruta a la carpeta del skill')
-    .action((skillPath: string) => {
-      const code = executeTestCommand(skillPath);
-      process.exitCode = code;
+    .option('-w, --watch', 'Observar cambios en el skill y volver a ejecutar las pruebas')
+    .action((skillPath: string, opts: { watch?: boolean }) => {
+      runOnceOrWatch(skillPath, opts.watch, () => executeTestCommand(skillPath));
     });
 
   program
@@ -83,6 +115,28 @@ export function buildCli(): Command {
     .argument('[dir]', 'Directorio padre opcional donde crear skillforge-skills')
     .action((dir?: string) => {
       const code = executeInitCommand(dir);
+      process.exitCode = code;
+    });
+
+  program
+    .command('list')
+    .description('Lista los skills de un directorio (o las plantillas disponibles con --templates)')
+    .argument('[dir]', 'Directorio que contiene los skills (por defecto ./skills)')
+    .option('--templates', 'Mostrar las categorías de plantillas disponibles')
+    .option('--json', 'Imprimir el resultado en formato JSON')
+    .action((dir: string | undefined, opts: { templates?: boolean; json?: boolean }) => {
+      const code = executeListCommand(dir, opts);
+      process.exitCode = code;
+    });
+
+  program
+    .command('doctor')
+    .description(
+      'Diagnostica el entorno: versión de Node.js, carpeta skills/ y validez de los skills'
+    )
+    .argument('[dir]', 'Directorio del espacio de trabajo (por defecto el directorio actual)')
+    .action((dir?: string) => {
+      const code = executeDoctorCommand(dir);
       process.exitCode = code;
     });
 

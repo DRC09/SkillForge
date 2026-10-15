@@ -21,6 +21,8 @@ export const TargetAgentSchema = z.enum(['claude-code', 'cursor', 'codex', 'gene
 
 export const SkillLanguageSchema = z.enum(['es', 'en']);
 
+export const PackageManagerSchema = z.enum(['npm', 'pnpm', 'yarn', 'bun']);
+
 export const SkillNameSchema = z
   .string()
   .min(1, 'El campo "name" no puede estar vacío.')
@@ -55,7 +57,14 @@ export const SkillForgeConfigSchema = z.object({
   author: z.string(),
   license: z.string().min(1),
   tags: z.array(z.string().min(1)).min(1),
-  entrypoint: z.string().min(1)
+  entrypoint: z.string().min(1),
+  repoContext: z
+    .object({
+      frameworks: z.array(z.string()),
+      packageManager: PackageManagerSchema,
+      hasTypeScript: z.boolean()
+    })
+    .optional()
 });
 
 export const SkillTestCaseSchema = z.object({

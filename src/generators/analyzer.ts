@@ -38,7 +38,9 @@ const CATEGORY_RULES: CategoryRule[] = [
     category: 'framework-migration',
     patterns: [
       /\b(migra(r|cion|te|tion)|upgrade|actualizar\s+version|portar)\b/i,
-      /\b(pages\s+router\s+a\s+app\s+router|de\s+vue\s+2|de\s+react|de\s+express|legacy)\b/i
+      // "de react" / "de express" only signal a migration next to a migration verb, so that
+      // phrases such as "optimizar rendimiento de React" are not misclassified.
+      /\b(pages\s+router\s+a\s+app\s+router|de\s+vue\s+2|legacy)\b|\b(migra\w*|portar|convertir|pasar|upgrade|actualizar)\b[^.\n]{0,40}\b(de|desde|from)\s+(react|express)\b/i
     ],
     weight: 11
   },

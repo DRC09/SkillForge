@@ -1,11 +1,16 @@
+import path from 'node:path';
 import * as clack from '@clack/prompts';
 import ora from 'ora';
 import pc from 'picocolors';
-import { DetailLevel, SkillLanguage, TargetAgent } from '../types/index.js';
+import { DetailLevel, LlmProvider, SkillLanguage, TargetAgent } from '../types/index.js';
 import { analyzeDescription } from '../generators/analyzer.js';
+import { enrichSkillMarkdownIfRequested } from '../generators/llm-enricher.js';
 import { generateSkill } from '../generators/skill-generator.js';
 import { validateSkill } from '../validators/skill-validator.js';
+import { readFileSafe, writeFileSafe } from '../utils/fs.js';
 import { logger } from '../utils/logger.js';
+
+const VALID_PROVIDERS: LlmProvider[] = ['none', 'ollama', 'openai', 'anthropic'];
 
 export interface CreateCommandCliOptions {
   name?: string;
@@ -14,6 +19,9 @@ export interface CreateCommandCliOptions {
   level?: DetailLevel;
   out?: string;
   yes?: boolean;
+  fromRepo?: string;
+  provider?: LlmProvider;
+  model?: string;
 }
 
 export async function executeCreateCommand(
@@ -22,6 +30,14 @@ export async function executeCreateCommand(
 ): Promise<number> {
   if (!description || description.trim().length < 5) {
     logger.error('Debes proporcionar una descripción clara del skill (mínimo 5 caracteres).');
+    return 1;
+  }
+
+  const provider: LlmProvider = options.provider ?? 'none';
+  if (!VALID_PROVIDERS.includes(provider)) {
+    logger.error(
+      `Proveedor no válido: "${String(options.provider)}". Usa uno de: ${VALID_PROVIDERS.join(', ')}.`
+    );
     return 1;
   }
 
@@ -100,14 +116,39 @@ export async function executeCreateCommand(
     isEnabled: isInteractive
   }).start();
 
-  const generated = generateSkill({
-    description,
-    name: skillName,
-    targetAgent,
-    language,
-    detailLevel,
-    outputDir: options.out
-  });
+  let generated: ReturnType<typeof generateSkill>;
+  try {
+    generated = generateSkill({
+      description,
+      name: skillName,
+      targetAgent,
+      language,
+      detailLevel,
+      outputDir: options.out,
+      fromRepo: options.fromRepo
+    });
+
+    if (provider !== 'none') {
+      const skillMdPath = path.join(generated.skillDir, 'SKILL.md');
+      const enrichment = await enrichSkillMarkdownIfRequested({
+        description,
+        baseMarkdown: readFileSafe(skillMdPath),
+        provider,
+        model: options.model
+      });
+      if (enrichment.enriched) {
+        writeFileSafe(skillMdPath, enrichment.markdown);
+      }
+      if (enrichment.warning) {
+        spinner.stop();
+        logger.warn(enrichment.warning);
+      }
+    }
+  } catch (error) {
+    spinner.fail('No se pudo generar el skill.');
+    logger.error(error instanceof Error ? error.message : 'Error inesperado al generar el skill.');
+    return 1;
+  }
 
   const validation = validateSkill(generated.skillDir);
 
@@ -123,6 +164,11 @@ export async function executeCreateCommand(
 
   logger.info(`Categoría detectada: ${pc.cyan(generated.config.category)}`);
   logger.info(`Directorio generado: ${pc.underline(generated.skillDir)}`);
+  if (generated.config.repoContext) {
+    logger.info(
+      `Contexto del repositorio inyectado: ${pc.cyan(generated.config.repoContext.frameworks.join(', ') || 'stack estándar')}`
+    );
+  }
   logger.step('Archivos creados:');
   for (const file of generated.filesCreated) {
     logger.raw(`  - ${file}`);

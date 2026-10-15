@@ -1,10 +1,12 @@
 import {
   DetailLevel,
+  RepoContext,
   SkillCategory,
   SkillLanguage,
   SkillTestCase,
   TargetAgent
 } from '../types/index.js';
+import { formatRepoContextMarkdown } from '../generators/repo-inspector.js';
 
 export interface CategoryTemplateData {
   category: SkillCategory;
@@ -1335,6 +1337,7 @@ export interface RenderSkillMarkdownParams {
   language: SkillLanguage;
   detailLevel: DetailLevel;
   tags: string[];
+  repoContext?: RepoContext;
 }
 
 function escapeYamlDoubleQuoted(value: string): string {
@@ -1361,6 +1364,9 @@ export function renderSkillMarkdown(params: RenderSkillMarkdownParams): string {
   const inputs = isEs ? tpl.inputsEs : tpl.inputsEn;
   const quality = isEs ? tpl.qualityCriteriaEs : tpl.qualityCriteriaEn;
   const antiPatterns = isEs ? tpl.antiPatternsEs : tpl.antiPatternsEn;
+  const repoContextSection = params.repoContext
+    ? `${formatRepoContextMarkdown(params.repoContext, params.language)}\n`
+    : '';
 
   const detailNoteEs =
     params.detailLevel === 'avanzado'
@@ -1395,7 +1401,7 @@ Solicitud base del skill: **${cleanDescription}**
 - **Etiquetas detectadas:** ${params.tags.map((t) => `\`${t}\``).join(', ')}
 - **Nivel operativo:** ${detailNoteEs}
 
-## Cuándo activarse
+${repoContextSection}## Cuándo activarse
 
 ${triggers.map((item) => `- ${item}`).join('\n')}
 
@@ -1467,7 +1473,7 @@ Core skill request: **${cleanDescription}**
 - **Detected tags:** ${params.tags.map((t) => `\`${t}\``).join(', ')}
 - **Operational level:** ${detailNoteEn}
 
-## When to Activate
+${repoContextSection}## When to Activate
 
 ${triggers.map((item) => `- ${item}`).join('\n')}
 
@@ -1525,7 +1531,8 @@ export function renderChecklistMarkdown(
   name: string,
   primaryCategory: SkillCategory,
   secondaryCategories: SkillCategory[],
-  language: SkillLanguage
+  language: SkillLanguage,
+  repoContext?: RepoContext
 ): string {
   const primary = CATEGORY_TEMPLATES[primaryCategory];
   const secondaries = secondaryCategories.map((c) => CATEGORY_TEMPLATES[c]);
@@ -1535,6 +1542,16 @@ export function renderChecklistMarkdown(
     ...(isEs ? primary.checklistItemsEs : primary.checklistItemsEn),
     ...secondaries.flatMap((s) => (isEs ? s.checklistItemsEs : s.checklistItemsEn))
   ];
+
+  if (repoContext) {
+    const frameworks = repoContext.detectedFrameworks.join(', ');
+    const scriptNames = Object.keys(repoContext.scripts).join(', ');
+    items.push(
+      isEs
+        ? `Verificar compatibilidad con el stack detectado (${frameworks || 'estándar'}) y ejecutar scripts del proyecto (${scriptNames || 'npm test'}).`
+        : `Verify compatibility with detected stack (${frameworks || 'standard'}) and run project scripts (${scriptNames || 'npm test'}).`
+    );
+  }
 
   if (isEs) {
     return `# Checklist de Verificación: ${name}

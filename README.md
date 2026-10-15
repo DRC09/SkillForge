@@ -11,12 +11,12 @@
 
 > **Describe una habilidad en una frase. Obtén un skill versionado, validado e instalable para tu agente de código.**
 
-[![npm version](https://img.shields.io/badge/npm-v0.1.0-cb3837?logo=npm)](https://www.npmjs.com/package/skillforge)
-[![Tests](https://img.shields.io/badge/tests-36%20passed-2ea44f?logo=vitest)](https://github.com/DRC09/SkillForge)
+[![npm version](https://img.shields.io/badge/npm-v0.2.0-cb3837?logo=npm)](https://www.npmjs.com/package/skillforge)
+[![Tests](https://img.shields.io/badge/tests-85%20passed-2ea44f?logo=vitest)](https://github.com/DRC09/SkillForge)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7%20Strict-3178c6?logo=typescript)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-**SkillForge** es una herramienta CLI open source que transforma descripciones en lenguaje natural en paquetes **Agent Skills** (`SKILL.md`, referencias, configuración tipada y pruebas de cobertura estática) 100% compatibles con el ecosistema `npx skills add`. Sin claves de API ni servicios de pago requeridos.
+**SkillForge** es una herramienta CLI open source que transforma descripciones en lenguaje natural en paquetes **Agent Skills** (`SKILL.md`, referencias, configuración tipada y pruebas de cobertura estática) 100% compatibles con el ecosistema `npx skills add`. Sin claves de API ni servicios de pago requeridos: el enriquecimiento con un LLM es opcional y está desactivado por defecto.
 
 ---
 
@@ -59,13 +59,32 @@ npm install -g skillforge
 
 ## Comandos
 
-| Comando                             | Descripción                                                                                                  |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `skillforge create "<descripción>"` | Analiza la descripción con heurísticas locales, genera la estructura del skill y lo valida automáticamente.  |
-| `skillforge validate <ruta>`        | Valida `SKILL.md`, frontmatter YAML, reglas de nombre, referencias a archivos y `skillforge.config.json`.    |
-| `skillforge test <ruta>`            | Ejecuta evaluación estática de cobertura contra `tests/cases.json` y genera `skillforge-report.json`.        |
-| `skillforge pack <ruta>`            | Valida y empaqueta el skill en `dist/<skill-name>.skillforge.zip` excluyendo archivos temporales y secretos. |
-| `skillforge init [directorio]`      | Crea un repositorio base `skillforge-skills` con un skill de ejemplo y un workflow de GitHub Actions.        |
+| Comando                             | Descripción                                                                                                            |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `skillforge create "<descripción>"` | Analiza la descripción con heurísticas locales, genera la estructura del skill y lo valida automáticamente.            |
+| `skillforge validate <ruta>`        | Valida `SKILL.md`, frontmatter YAML, reglas de nombre, referencias a archivos y `skillforge.config.json`.              |
+| `skillforge test <ruta>`            | Ejecuta evaluación estática de cobertura contra `tests/cases.json` y genera `skillforge-report.json`.                  |
+| `skillforge pack <ruta>`            | Valida y empaqueta el skill en `dist/<skill-name>.skillforge.zip` excluyendo archivos temporales y secretos.           |
+| `skillforge init [directorio]`      | Crea un repositorio base `skillforge-skills` con un skill de ejemplo y un workflow de GitHub Actions.                  |
+| `skillforge list [dir]`             | Lista los skills de un directorio (por defecto `./skills`) con categoría, versión, idioma, agente y estado de validez. |
+| `skillforge doctor [dir]`           | Diagnostica el entorno: versión de Node.js, carpeta `skills/` y validez de los skills instalados.                      |
+
+### Opciones
+
+| Comando            | Opción                  | Descripción                                                                                    |
+| ------------------ | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `create`           | `-n, --name <name>`     | Nombre corto del skill en kebab-case.                                                          |
+| `create`           | `-a, --agent <agent>`   | Agente objetivo: `claude-code`, `cursor`, `codex` o `generic`.                                 |
+| `create`           | `-l, --lang <lang>`     | Idioma del skill: `es` o `en`.                                                                 |
+| `create`           | `-d, --level <level>`   | Nivel de detalle: `basico`, `estandar` o `avanzado`.                                           |
+| `create`           | `-o, --out <dir>`       | Directorio de salida donde se creará la carpeta del skill.                                     |
+| `create`           | `-y, --yes`             | Omite las preguntas interactivas y usa los valores detectados.                                 |
+| `create`           | `--from-repo <path>`    | Inspecciona un repositorio local e inyecta su stack, versiones y scripts en el skill.          |
+| `create`           | `--provider <provider>` | Proveedor opcional de enriquecimiento: `none` (por defecto), `ollama`, `openai` o `anthropic`. |
+| `create`           | `--model <model>`       | Modelo opcional cuando se utiliza `--provider`.                                                |
+| `validate`, `test` | `-w, --watch`           | Observa los cambios del skill y vuelve a ejecutar la acción automáticamente.                   |
+| `list`             | `--templates`           | Muestra las 11 categorías de plantillas disponibles.                                           |
+| `list`             | `--json`                | Imprime el resultado en formato JSON.                                                          |
 
 ---
 
@@ -96,6 +115,56 @@ npx skillforge pack ./skills/nextjs-pr-reviewer
 ```bash
 npx skillforge init
 ```
+
+### 5. Inyectar el contexto de un repositorio real
+
+```bash
+npx skillforge create "Revisar Pull Requests de este proyecto" --from-repo ./mi-proyecto
+```
+
+SkillForge lee el `package.json` y los archivos de configuración del repositorio, detecta el gestor de paquetes (`npm`, `pnpm`, `yarn` o `bun`), los frameworks y herramientas (`nextjs`, `react`, `vue`, `astro`, `zod`, `vitest`, `jest`, `playwright`, `tailwind`, `prisma`, `typescript`, etc.) y los scripts disponibles. Con eso añade la sección `## Contexto Técnico del Repositorio` a `SKILL.md`, un ítem extra en `references/checklist.md` y un bloque `repoContext` en `skillforge.config.json`.
+
+### 6. Enriquecer el `SKILL.md` con un LLM (opcional)
+
+```bash
+npx skillforge create "Auditar seguridad de endpoints Node.js" --provider ollama --model llama3.2
+```
+
+| Proveedor   | Requisitos                                                                  | Modelo por defecto |
+| ----------- | --------------------------------------------------------------------------- | ------------------ |
+| `ollama`    | Servidor local en `http://127.0.0.1:11434` (configurable con `OLLAMA_HOST`) | `llama3.2`         |
+| `openai`    | Variable de entorno `OPENAI_API_KEY`                                        | `gpt-4o-mini`      |
+| `anthropic` | Variable de entorno `ANTHROPIC_API_KEY`                                     | `claude-haiku-5-5` |
+
+El enriquecimiento usa únicamente `fetch` nativo de Node.js (sin SDKs) con un tiempo máximo de 8 segundos por petición. Es siempre seguro: si falta la clave, el proveedor no responde o la respuesta pierde el frontmatter, el `name` o alguna sección obligatoria, se conserva la plantilla heurística local y se muestra una advertencia. El resultado siempre se valida igual que cualquier otro skill.
+
+### 7. Modo `--watch`
+
+```bash
+npx skillforge validate ./skills/nextjs-pr-reviewer --watch
+npx skillforge test ./skills/nextjs-pr-reviewer --watch
+```
+
+Ejecuta la acción una vez y la repite cada vez que cambia un archivo del skill (con 250 ms de debounce). Ignora `skillforge-report.json`, `.git` y `node_modules`. Presiona `Ctrl+C` para salir.
+
+### 8. Listar skills y diagnosticar el entorno
+
+```bash
+npx skillforge list                 # tabla con los skills de ./skills
+npx skillforge list ./skills --json # mismo resultado en JSON
+npx skillforge list --templates     # las 11 plantillas disponibles
+npx skillforge doctor               # Node.js >= 20, carpeta skills/ y validez de los skills
+```
+
+`doctor` termina con código `0` si todo está en orden y `1` si detecta algún problema.
+
+### Evaluación estática semántica
+
+`skillforge test` reconoce cada criterio de `tests/cases.json` de tres formas, registradas en `matchDetails` dentro de `skillforge-report.json`:
+
+- `exact`: el texto aparece tal cual (sin distinguir acentos ni mayúsculas).
+- `stem`: coincide por raíz léxica (por ejemplo, `optimizaciones` con `optimización`).
+- `synonym`: aparece un término equivalente bilingüe (por ejemplo, `performance` con `rendimiento`).
 
 ---
 
@@ -138,8 +207,8 @@ El archivo `SKILL.md` incluye frontmatter YAML validado (`name` en kebab-case ha
 ## Roadmap
 
 - [x] **v0.1.0 (MVP)**: Generación heurística offline en 11 categorías, validación estricta con Zod, evaluación estática de cobertura, empaquetado `.zip` y comando `init`.
-- [ ] **v0.2.0**: Evaluación semántica opcional con LLMs locales (Ollama) y proveedores BYOK, modo `--watch` y catálogo comunitario de plantillas.
-- [ ] **v0.3.0**: Publicación directa de releases en GitHub y benchmarking comparativo entre versiones de un mismo skill.
+- [x] **v0.2.0**: Inyección del contexto de un repositorio (`--from-repo`), enriquecimiento opcional con Ollama, OpenAI o Anthropic (`--provider`, `--model`), evaluación estática por raíz léxica y sinónimos, modo `--watch` y los comandos `list` y `doctor`.
+- [ ] **v0.3.0**: Catálogo comunitario de plantillas, publicación directa de releases en GitHub y benchmarking comparativo entre versiones de un mismo skill.
 
 ---
 
